@@ -1,0 +1,143 @@
+// ==UserScript==
+// @name         Crypto Kitty Info Extension
+// @namespace    https://github.com/HaJaeKyung/CryptoCatAdd
+// @version      0.18
+// @description  Adds stat info to the site
+// @author       HaJaeKyung
+// @match        *.cryptokitties.co/*
+// @grant        none
+// @require http://code.jquery.com/jquery-3.2.1.min.js
+// ==/UserScript==
+
+$(function() {
+    console.log('CryptoKitties Extension Loaded');
+    $("head").append("<style> .extAttUl{ overflow: visible; z-index: 3; position:absolute; bottom: 0; right: 0; padding: 0px; margin: 0px;} .extAtt{ padding-left: 2px; padding-right: 2px; color: rgb(42, 40, 37); text-align: center; line-height: 1.85rem; font-size: 1.6rem; border-style: solid; border-width: 2px; border-radius: 20px; }</style>");
+    $("head").append("<style> .extBounce {animation: mover 1s infinite  alternate; padding-right: 2px;} @keyframes mover {0% { transform: translateY(0); }100% { transform: translateY(-6px); } </style>");
+    $("head").append("<style> .KittyCard { overflow: visible; } </style>");
+
+    var found = false;
+    var foundId = [];
+    var curCat = 'n/a';
+    var curId = 'n/a';
+    var url = location.href;
+    document.body.addEventListener('click', function() {
+        requestAnimationFrame(function() {
+            if (url!==location.href) {
+                //Clears id cache on page change
+                foundId = [];
+                url = location.href;
+            }
+        });
+    }, true);
+    var tbl = {
+        "googly": { "count": 0.002 },
+        "mainecoon": { "count": 0.2 },
+        "wingtips": { "count": 0.2 },
+        "jaguar": { "count": 0.2 },
+        "whixtensions": { "count": 0.4 },
+        "cerulian": { "count": 0.7 },
+        "chartreux": { "count": 0.8 },
+        "fabulous": { "count": 1.5 },
+        "gold": { "count": 1.5 },
+        "peach": { "count": 1.6 },
+        "scarlet": { "count": 3.4 },
+        "bubblegum": { "count": 3.4 },
+        "bloodred": { "count": 3.4 },
+        "otaku": { "count": 3.6 },
+        "dali": { "count": 3.6 },
+        "skyblue": { "count": 4.7 },
+        "emeraldgreen": { "count": 5.0 },
+        "spock": { "count": 5.3 },
+        "limegreen": { "count": 5.5 },
+        "tigerpunk": { "count": 5.5 },
+        "mauveover": { "count": 7.7 },
+        "beard": { "count": 6 },
+        "barkbrown": { "count": 7.9 },
+        "laperm": { "count": 7.9 },
+        "calicool": { "count": 7.9 },
+        "cloudwhite": { "count": 7.9 },
+        "cymric": { "count": 8.6 },
+        "chestnut": { "count": 8.8 },
+        "saycheese": { "count": 10.5 },
+        "tongue": { "count": 10.5 },
+        "shadowgrey": { "count": 14 },
+        "coffee": { "count": 14 },
+        "salmon": { "count": 14.7 },
+        "royalpurple": { "count": 15.3 },
+        "chocolate": { "count": 16.9 },
+        //"swampgreen": { "count": 17 },
+        //"mintgreen": { "count": 17.3 },
+        //"orangesoda": { "count": 17.3 },
+        //"simple": { "count": 17.3 },
+        //"topaz": { "count": 17.3 },
+    };
+
+    function getColor(catt) {
+        var color, count;
+        if (tbl[catt]) {
+            if (tbl[catt].count < 1.65) {
+                color = "#EC7063";
+            } else if (tbl[catt].count < 8) {
+                color = "#F7DC6F";
+            } else {
+                color = "#48C9B0";
+            }
+            count = " ("+ tbl[catt].count +"%)";
+        } else {
+            color = "white";
+            count = " (17%+)";
+        }
+        return [color, count];
+    }
+
+    //Creates overlay on hover
+    $( "#app" ).on( "mouseover", "a", function() {
+        var element = $( this )[0];
+        var id = /[^/]*$/.exec(element)[0];
+        if (!isNaN(id) && id !== "" && id.substring(0,2) != "0x" && id != curId && !foundId.includes(id) && !document.URL.includes("activity")) {
+            console.log('Requesting: '+ id);
+            curId = id;
+            foundId.push(id);
+
+            if (element.children[0] && element.children[0].innerHTML) {
+                element.children[0].children[0].innerHTML += "<ul  style='list-style: none;' class='extBounce extAttUl'>🐈</ul>";
+                $.getJSON( "https://api.cryptokitties.co/kitties/"+id, function( data ) {
+                    var ul = element.getElementsByClassName("extAttUl")[0];
+                    ul.classList.remove("extBounce");
+                    ul.innerHTML = "";
+                    var cdIdx = data.status.cooldown_index;
+
+                    ul.innerHTML += "<li class='extAtt' style=\'background-color:black; color:white\'>CD Idx: "+cdIdx+"</li>";
+                    for (var x in data.cattributes) {
+                        if (data.cattributes[x]) {
+                            var firstPart = "'background-color:'"+getColor(data.cattributes[x]);
+                            ul.innerHTML += "<li class='extAtt' style=\'background-color:"+getColor(data.cattributes[x].description)[0]+"\'>"+data.cattributes[x].description+"</li>";
+                        }
+                    }
+                });
+            }
+        }
+    });
+
+    //Updates attributes on specific kitty page
+    setInterval(function() {
+        var curPage = document.getElementsByClassName("KittyHeader-details");
+        if (curPage.length > 0 && curPage[0].innerHTML.substr(0, curPage[0].innerHTML.indexOf('</span>')) != curCat) {
+            curCat = curPage[0].innerHTML.substr(0, curPage[0].innerHTML.indexOf('</span>'));
+            if (document.getElementsByClassName("ListAttributes-item").length > 0) {
+                var cattributes = document.getElementsByClassName("ListAttributes-item");
+
+                for (var att in cattributes) {
+                    if (cattributes[att].style) {
+                        var catt = cattributes[att].innerText;
+                        var arr = getColor(catt);
+                        var color = arr[0];
+                        var num = arr[1];
+                        cattributes[att].style.backgroundColor = color;
+                        cattributes[att].innerHTML += num;
+                    }
+                }
+            }
+        }
+    }, 2000);
+});
